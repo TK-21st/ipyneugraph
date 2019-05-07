@@ -1,0 +1,43 @@
+{
+  "name": "ipyneugraph",
+  "version": "0.1.0",
+  "description": "A Custom Jupyter Widget Library",
+  "author": "Tingkai Liu",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com//ipyneugraph.git"
+  },
+  "keywords": [
+    "jupyter",
+    "widgets",
+    "ipython",
+    "ipywidgets",
+    "jupyterlab-extension"
+  ],
+  "files": [
+    "lib/**/*.js",
+    "dist/*.js"
+  ],
+  "scripts": {
+    "clean": "rimraf dist/",
+    "prepublish": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "webpack --config webpack.config.js --watch"
+  },
+  "devDependencies": {
+    "webpack": "^3.5.5",
+    "rimraf": "^2.6.1"
+  },
+  "dependencies": {
+    "@jupyter-widgets/base": "^1.0.0",
+    "lodash": "^4.17.4",
+    "d3-format": "^1.3.2",
+    "graphology": "0.14.0",
+    "graphology-layout-forceatlas2": "0.2.1",
+    "sigma": "2.0.0-alpha20"
+  },
+  "jupyterlab": {
+    "extension": "lib/labplugin"
+  }
+}
