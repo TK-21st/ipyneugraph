@@ -1,11 +1,10 @@
 var widgets = require('@jupyter-widgets/base');
 var _ = require('lodash');
-
-
 var Graph = require('graphology');
 var WebGLRenderer = require('sigma/renderers/webgl').default;
 var FA2Layout = require('graphology-layout-forceatlas2/worker');
 var format = require('d3-format').format;
+
 // Custom Model. Custom widgets models must at least provide default values
 // for model attributes, including
 //
@@ -36,23 +35,6 @@ function toRGBString(element) {
   return a ?
     ('rgba(' + r + ',' + g + ',' + b + ',' + a + ')') :
     ('rgb(' + r + ',' + g + ',' + b + ')');
-}
-
-var DESCRIPTORS = {
-    'mixed': 'Mixed',
-    'directed': 'Directed',
-    'undirected': 'Undirected'
-}
-
-
-function getFA2Settings(graph) {
-    return {
-        barnesHutOptimize: graph.order > 2000,
-        strongGravityMode: true,
-        gravity: 0.05,
-        scalingRatio: 10,
-        slowDown: 1 + Math.log(graph.order)
-    };
 }
 
 function buildGraph(data) {
