@@ -1,6 +1,7 @@
 var Graph = require('graphology');
 var WebGLRenderer =  require('sigma/renderers/webgl').default;
 
+import {EventEmitter} from 'events';
 import { animateNodes } from  'sigma/animate';
 var FA2Layout =  require('graphology-layout-forceatlas2/worker');
 import degree from 'graphology-metrics/degree';
@@ -13,16 +14,20 @@ const PAUSE_ICON = '❚❚';
 const RESCALE_ICON = '⊙';
 const ZOOM_ICON = '⊕';
 const UNZOOM_ICON = '⊖';
+const PLOT_ICON = '🖺';
+
 const MUTED_COLOR = '#FBFBFB';
 const NUMBER_FORMAT = format(',');
 
-export class SigmaGraph{
+export class SigmaGraph extends EventEmitter{
     constructor(container, graph_data, options={}){
+        super();
         this.container = container;
         let _graph_dict = this.buildGraph(graph_data)
         this.G = _graph_dict.graph;
         this._nodeAttrs = _graph_dict.nodeAttrs;
         this._edgeAttrs = _graph_dict.edgeAttrs;
+        this.plottedNodes = new Set();
 
         this.forceLayout = new FA2Layout(this.G, {
             settings: this._getFA2Settings(this.G)
@@ -66,6 +71,18 @@ export class SigmaGraph{
         this.initRenderer();
     }
     
+
+    /**
+     * Plot IO based on selected nodes
+     * @param {*} nodes 
+     */
+    plotNodesIO(nodes){
+        if (this.plottedNodes.size == 0){
+            return;
+        }
+        this.emit('plotNodesIO', nodes);
+    }
+
     /**
      * Toggle force layout
      */
@@ -110,6 +127,9 @@ export class SigmaGraph{
 
         this.renderer.on('clickNode', (data)=> {
             let node = data.node;
+            this.plottedNodes.clear()
+            this.plottedNodes.add(node);
+
             this.highlightNode(node);
             this.showAttrs(data.node, this.G.getNodeAttributes(data.node));
         });
@@ -406,11 +426,38 @@ export class SigmaGraph{
             this.camera.animate({x: 0.5, y: 0.5, ratio: 1});
         };
 
+        let plotButton = document.createElement('button');
+        
+        plotButton.style.position = 'absolute';
+        plotButton.style.bottom = (28 + 5 + 28 + 5 + 28 + 5 + 28) + 'px';
+        plotButton.style.right = '10px';
+        plotButton.style.zIndex = '10';
+        plotButton.style.width = '28px';
+        plotButton.style.height = '28px';
+        plotButton.style.fontSize = '24px';
+        plotButton.style.textAlign = 'center';
+        plotButton.style.backgroundColor = '#fffffe';
+        plotButton.style.outline = '0';
+        plotButton.setAttribute('title', 'Plot Node');
+        
+        let innerPlotButton = document.createElement('div');
+        
+        innerPlotButton.style.margin = '-11px';
+        innerPlotButton.textContent = PLOT_ICON;
+        
+        plotButton.appendChild(innerPlotButton);
+        
+        plotButton.onclick = ()=> {
+            this.plotNodesIO(this.plottedNodes);
+        };
+
         this.container.appendChild(description);
         this.container.appendChild(layoutButton);
         this.container.appendChild(zoomButton);
         this.container.appendChild(unzoomButton);
         this.container.appendChild(rescaleButton);
+        this.container.appendChild(plotButton);
+
     }
 
     /**

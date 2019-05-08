@@ -1,5 +1,5 @@
 import ipywidgets as widgets
-from traitlets import Unicode, Dict, Int, Bool
+from traitlets import Unicode, Dict, Int, Bool, Set
 import networkx as nx
 import h5py
 
@@ -21,6 +21,8 @@ class NeuGraph(widgets.DOMWidget):
     graph_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     graph_data_changed = Bool(False).tag(sync=True)
 
+
+    plotted_nodes = Set().tag(sync=True)
     io_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     io_data_changed = Bool(False).tag(sync=True)
 
@@ -28,6 +30,8 @@ class NeuGraph(widgets.DOMWidget):
     height = Int(500).tag(sync=True)
     start_layout = Bool(False).tag(sync=True)
     callback_fired = Bool(False).tag(sync=True)
+
+    
 
     def __init__(self, graph, height=500, start_layout=False, **kwargs):
         super(NeuGraph, self).__init__(**kwargs)
@@ -41,9 +45,12 @@ class NeuGraph(widgets.DOMWidget):
             'directed': graph.is_directed()
         }
 
+        self.file_i = None # input h5py file
+        self.file_o = None # output h5py file
+
         self.height = height
         self.start_layout = start_layout
-
+        self.observe(self.plot_IO, names='plotted_nodes')
 
     @staticmethod
     def from_gexf(handle, *args, **kwargs):
@@ -81,7 +88,7 @@ class NeuGraph(widgets.DOMWidget):
             }
         elif method == 'force':
             self.callback = {
-                'forceLayout': []
+                'toggleForceLayout': []
             }
         self.callback_fired = True
     
@@ -100,6 +107,9 @@ class NeuGraph(widgets.DOMWidget):
     #         func(nodedata[prop])
     #     pass
 
+    def test_callback(self, change):
+        print("test",change)
+
     def load_IO(self, fname, IO='input'):
         """Load h5 Input/Output Files
 
@@ -110,4 +120,19 @@ class NeuGraph(widgets.DOMWidget):
         IO: string, optional
             whether the file is input or output
         """
+        if IO == 'input':
+            self.file_i = h5py.File(fname)
+            self.filename_i = fname
+        elif IO == 'output':
+            self.file_o = h5py.File(fname)
+            self.filename_o = fname
+        else:
+            raise NotImplementedError
+
+    def plot_IO(self, nodes):
+        print(nodes)
+        if self.file_i is None:
+            print('plotting', nodes)
+        if self.file_o is not None:
+            print('plotting', nodes)
         pass

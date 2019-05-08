@@ -62,9 +62,17 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         this.refresh();
         this.model.on('change:graph_data_changed', this.graphDataChanged, this);
         this.model.on('change:callback_fired', this.callbackFired, this); 
-
+        this.graph.on('plotNodesIO', (nodes) => { this.plotNodesIO(nodes) }, this);
 
         // this.model.on('change:start_layout', this.toggleLayout, this); 
+    },
+
+    /**
+     * Plot Nodes 
+     */
+    plotNodesIO: function(nodes) {
+        this.model.set('plotted_nodes', nodes);
+        this.touch();
     },
 
     graphDataChanged: function() {
