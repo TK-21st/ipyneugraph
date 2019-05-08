@@ -68,5 +68,31 @@ module.exports = [
             rules: rules
         },
         externals: ['@jupyter-widgets/base']
-    }
+    },
+    {// My Graph
+        entry: './lib/graph.js',
+        output: {
+            filename: 'graph.js',
+            path: path.resolve(__dirname, '..', 'ipyneugraph', 'static'),
+            libraryTarget: 'amd'
+        },
+        devtool: 'source-map',
+        module: {
+            rules: rules
+        },
+        externals: ['@jupyter-widgets/base']
+    },
+    {// My GUI
+        entry: './lib/dat.gui.js',
+        output: {
+            filename: 'dat.gui.js',
+            path: path.resolve(__dirname, '..', 'ipyneugraph', 'static'),
+            libraryTarget: 'amd'
+        },
+        devtool: 'source-map',
+        module: {
+            rules: rules
+        },
+        externals: ['@jupyter-widgets/base']
+    },
 ];

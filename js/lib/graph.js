@@ -1,23 +1,10 @@
-var widgets = require('@jupyter-widgets/base');
-var _ = require('lodash');
+var Graph = require('graphology');
+var WebGLRenderer =  require('sigma/renderers/webgl').default;
+import { animateNodes } from  'sigma/animate';
+var FA2Layout =  require('graphology-layout-forceatlas2/worker');
+var format =  require('d3-format').format;
+var chroma = require('chroma-js');
 
-import * as Graph from 'graphology';
-import {format} from 'd3-format';
-import WebGLRenderer from 'sigma/renderers/webgl';
-import FA2Layout from 'graphology-layout-forceatlas2/worker';
-
-// Custom Model. Custom widgets models must at least provide default values
-// for model attributes, including
-//
-//  - `_view_name`
-//  - `_view_module`
-//  - `_view_module_version`
-//
-//  - `_model_name`
-//  - `_model_module`
-//  - `_model_module_version`
-//
-//  when different from the base class.
 const START_ICON = '▶';
 const PAUSE_ICON = '❚❚';
 const RESCALE_ICON = '⊙';
@@ -26,23 +13,80 @@ const UNZOOM_ICON = '⊖';
 const MUTED_COLOR = '#FBFBFB';
 const NUMBER_FORMAT = format(',');
 
+export class SigmaGraph{
+    constructor(container, data, options={}){
+        this.container = container;
+        let _graph_dict = this.buildGraph(data)
+        this.G = _graph_dict.graph;
+        this._nodeAttrs = _graph_dict.nodeAttrs;
+        this._edgeAttrs = _graph_dict.edgeAttrs;
 
-class SigmaGraph{
-    /**
-     * 
-     * @param {*} data 
-     */
-    constructor(container, data){
-        this.G = this.buildGraph(data)
-        this.layout = new FA2Layout(this.G, {settings: this._getFA2Settings(this.G)});
-        this.description = this._getGraphDescription(this.graph);
+        this.layout = new FA2Layout(this.G, {
+            settings: this._getFA2Settings(this.G)
+        });
+        this.description = this._getGraphDescription(this.G);
         this.highlightedNodes = new Set(),
         this.highlightedEdges = new Set();
-        this.initCanvas(container);
+        this.initCanvas();
+
+        // this._dragging = false;
+        // this._draggedNode = undefined;
+    }
+
+    /**
+     * Update graph
+     * @param {object} G_dict
+     */
+    updateGraph(G_dict){
+        if (G_dict.graph == this.G){
+            return;
+        }
+        delete this.G;
+
+        this.G = G_dict.graph;
+        this._nodeAttrs = G_dict.nodeAttrs;
+        this._edgeAttrs = G_dict.edgeAttrs;
+
+        this.renderer.kill();
+        this.layout.kill();
+        delete this.layout;
+        this.layout = new FA2Layout(this.G, {
+            settings: this._getFA2Settings(this.G)
+        });
+        this.initCanvas();
         this.initRenderer();
-        this.container = container;
     }
     
+    /**
+     * show node attributes in dat.gui 'Node Attributes' folder
+     * @param {json} attrs 
+     */
+    showAttrs(node, attrs){
+        let txt = '<b>' + node + '</b>';
+        for (let key in attrs){
+            let value = attrs[key];
+            if (isNaN(value)){
+                continue;
+            }
+            txt += '<br>' + key + ': ' + value;
+        }
+        this.descriptionPanel.innerHTML = txt;
+    }
+
+    /**
+     * clear everything
+     */
+    clear(){
+        let G_dict = {
+            graph: new Graph(),
+            nodeAttrs: {},
+            edgeAttrs: {}
+        }
+        this.updateGraph(G_dict);
+    }
+    /**
+     * Initialize WebGL renderer
+     */
     initRenderer(){
         this.renderer = new WebGLRenderer(this.G, this.container, {
             zIndex: true
@@ -52,23 +96,57 @@ class SigmaGraph{
         this.renderer.on('clickNode', (data)=> {
             let node = data.node;
             this.highlightNode(node);
+            this.showAttrs(data.node, this.G.getNodeAttributes(data.node));
         });
+
 
         this.renderer.on('clickStage', ()=> {
             this.unhighlightNode();
         });
 
-        if (this.model.get('start_layout')){
-            this.layoutButton.click();
-        }
+        // this.renderer.on('downNode', e => {
+        //     console.log('DOWN');
+        //     this._dragging = true;
+        //     this._draggedNode = e.node;
+        //     this.camera.disable();
+        //   });
+
+        // const captor = this.renderer.getMouseCaptor();
+        // captor.on('mouseup', e => {
+        //     console.log('UP');
+        //     this._dragging = false;
+        //     this._draggedNode = undefined;
+        //     this.camera.enable();
+        //   });
+          
+        // captor.on('mousemove', e => {
+        //     console.log('MOVE');
+        //     if (!this._dragging)
+        //         return;
+
+        //     // Get new position of node
+        //     const pos = renderer.normalizationFunction.inverse(
+        //         this.camera.viewportToGraph(renderer, e.x, e.y)
+        //     );
+
+        //     graph.setNodeAttribute(this._draggedNode, 'x', pos.x);
+        //     graph.setNodeAttribute(this._draggedNode, 'y', pos.y);
+        // });
+          
     }
 
+    
+    /**
+     * contruct graph from data
+     * @param {object} data {'nodes':[ ],'edges':[ ],directed:bool}
+     */
     buildGraph(data){
         let graph = new Graph({type: data.directed ? 'directed': 'undirected'});
-        data.nodes.forEach(function(node) {
+        let nodeAttrs = undefined;
+        let edgeAttrs = undefined;
+        data.nodes.forEach((node)=> {
             let key = node[0];
             let attrs = node[1];
-    
             attrs.z = 1;
     
             if (!attrs.viz)
@@ -91,13 +169,29 @@ class SigmaGraph{
                 attrs.label = key;
     
             graph.addNode(key, attrs);
+            // update nodes properties
+            for (var prop in attrs){
+                let prop_val = attrs[prop]
+                if (nodeAttrs == undefined){
+                    nodeAttrs = {};
+                    nodeAttrs[prop] = {}
+                    nodeAttrs[prop][prop_val] = [key];
+                }else if (!(prop in nodeAttrs)){
+                    nodeAttrs[prop] = {}
+                    nodeAttrs[prop][prop_val] = [key];
+                }else if (!(prop_val in nodeAttrs[prop])){
+                    nodeAttrs[prop][prop_val] = [key];
+                }else{
+                    nodeAttrs[prop][prop_val].push(key);
+                }
+            }
         });
     
-        data.edges.forEach(function(edge) {
+        data.edges.forEach((edge) => {
             let source = edge[0];
             let target = edge[1];
             let attrs = edge[2];
-    
+            
             attrs.z = 1;
     
             if (!attrs.viz)
@@ -108,15 +202,40 @@ class SigmaGraph{
                 attrs.originalColor = attrs.color;
             }
     
-            if (graph.hasEdge(source, target))
+            if (graph.hasEdge(source, target)){
                 graph.upgradeToMulti();
-    
+            }
+
             graph.addEdge(source, target, attrs);
+
+            // update edges properties
+            for (var prop in attrs){
+                let prop_val = attrs[prop]
+                if (edgeAttrs == undefined){
+                    edgeAttrs = {};
+                    edgeAttrs[prop] = {}
+                    edgeAttrs[prop][prop_val] = [[source, target]];
+                }else if (!(prop in edgeAttrs)){
+                    edgeAttrs[prop] = {}
+                    edgeAttrs[prop][prop_val] = [[source, target]];
+                }else if (!(prop_val in edgeAttrs[prop])){
+                    edgeAttrs[prop][prop_val] = [[source, target]];
+                }else{
+                    edgeAttrs[prop][prop_val].push([source, target]);
+                }
+            }
         });
-        return graph;
+        return {
+            graph: graph,
+            nodeAttrs: nodeAttrs,
+            edgeAttrs: edgeAttrs,
+        };
     }
 
-    initCanvas(container){
+    /**
+     * Intialize canvas
+     */
+    initCanvas(){
         let description = document.createElement('div');
         description.style.position = 'absolute';
         description.style.top = '10px';
@@ -127,9 +246,8 @@ class SigmaGraph{
         description.style.fontSize = '0.8em';
         description.style.fontStyle = 'italic';
         description.style.zIndex = '10';
-        description.innerHTML = this.graph.description;
-        
-        container.appendChild(description);
+        description.innerHTML = this.description;
+        this.descriptionPanel = description;
         
         let layoutButton = document.createElement('button');
         layoutButton.style.position = 'absolute';
@@ -145,7 +263,7 @@ class SigmaGraph{
         layoutButton.style.outline = '0';
         layoutButton.setAttribute('title', 'Start layout');
         
-        layoutButton.onclick = function() {
+        layoutButton.onclick = ()=> {
             if (this.layout && this.layout.running) {
                 layoutButton.textContent = START_ICON;
                 layoutButton.setAttribute('title', 'Start layout');
@@ -237,13 +355,54 @@ class SigmaGraph{
         rescaleButton.onclick = ()=> {
             this.camera.animate({x: 0.5, y: 0.5, ratio: 1});
         };
-        
-        container.appendChild(layoutButton);
-        container.appendChild(zoomButton);
-        container.appendChild(unzoomButton);
-        container.appendChild(rescaleButton);
+
+        this.container.appendChild(description);
+        this.container.appendChild(layoutButton);
+        this.container.appendChild(zoomButton);
+        this.container.appendChild(unzoomButton);
+        this.container.appendChild(rescaleButton);
     }
 
+    /**
+     * Show nodes in a grid
+     */
+    gridLayout(NRows=undefined, prop="label", order="ascend", chroma_scale="OrRd") {
+        let totWidth = 100;
+        let totHeight = 100;
+
+        let NCols = null;
+        if (NRows == undefined){
+            NRows = Math.floor(Math.sqrt(this.G.order));
+            NCols = Math.ceil(Math.sqrt(this.G.order));
+        }else{
+            NRows = Math.floor(NRows);
+            NCols = Math.ceil(this.G.order/NRows);
+        }
+        let orderedNodes = this._sortNodes(prop, order);
+        this.colorNodes(prop,chroma_scale);
+
+        let new_positions = {};
+        let col_res = totWidth/NCols;
+        let row_res = totHeight/NRows;
+
+        orderedNodes.forEach((node, i)=>{
+            let col = i % NCols;
+            let row = Math.floor(i/NCols);
+            new_positions[node] = {
+                x: col*col_res,
+                y: row*row_res,
+            }
+            // this.G.setNodeAttribute(node, "x", col*col_res);
+            // this.G.setNodeAttribute(node, "y", row*row_res);
+        });
+
+        animateNodes(this.G, new_positions, {duration: 2000});
+    }
+
+    /**
+     * Highlight node 
+     * @param {node} h 
+     */
     highlightNode(h) {
         this.highlightedNodes.clear();
         this.highlightedEdges.clear();
@@ -280,6 +439,9 @@ class SigmaGraph{
         });
     }
     
+    /**
+     * unhighlight all nodes 
+     */
     unhighlightNode() {
         if (!this.highlightedNodes.size)
             return;
@@ -330,66 +492,76 @@ class SigmaGraph{
             scalingRatio: 10,
             slowDown: 1 + Math.log(graph.order)
         };
-    }      
-}
-
-
-// When serialiazing the entire widget state for embedding, only values that
-// differ from the defaults will be specified.
-var NeuGraphModel = widgets.DOMWidgetModel.extend({
-    defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
-        _model_name : 'NeuGraphModel',
-        _view_name : 'NeuGraphView',
-        _model_module : 'ipyneugraph',
-        _view_module : 'ipyneugraph',
-        _model_module_version : '0.1.0',
-        _view_module_version : '0.1.0',
-        value : 'adsgadgdag'
-    })
-});
-
-
-// Custom View. Renders the widget model.
-var NeuGraphView = widgets.DOMWidgetView.extend({
-    initialize: function(){
-        this.renderSigma = this.renderSigma.bind(this);
-    },
-
-    render: function() {
-        var self = this;
-
-        var height = this.model.get('height');
-        var data = this.model.get('data');
-        var container = document.createElement('div');
-        container.style.width = '100%';
-        container.style.height = height + 'px';
-        var el = this.el;
-        el.style.height = height + 'px';
-        el.appendChild(container);
-
-        this.graph = new SigmaGraph(container, data);
-
-        this.container = container;
-
-        this.dataChanged();
-        this.model.on('change:value', this.dataChanged, this);
-    },
-
-    dataChanged: function() {
-        requestAnimationFrame(this.renderSigma);
-    },
-
-
-    renderSigma: function() {
-        this.graph.initRenderer()
     }
-});
 
+    /**
+     * Sort the nodes in graph based on key and order.
+     * 
+     * Note: the sorting is done _in place_.
+     * @param {String} [prop="label"]
+     * @param {String} [order="ascend"]
+     */
+    _sortNodes(prop="label", order="ascend"){
+        var self = this;
+        function compare(a,b){
+            let a_attr = self.G.getNodeAttribute(a, prop);
+            let b_attr = self.G.getNodeAttribute(b, prop);
+            if (order === "ascend"){
+                if (a_attr > b_attr){
+                    return 1;
+                }else if (b_attr > a_attr){
+                    return -1;
+                }else{
+                    if (self.G.getNodeAttribute(a, "label")> self.G.getNodeAttribute(b, "label")){
+                        return 1;
+                    }else if (self.G.getNodeAttribute(a, "label")< self.G.getNodeAttribute(b, "label")){
+                        return -1
+                    }else{
+                        return 0;
+                    }
+                }
+            }else{
+                if (a_attr > b_attr){
+                    return -1;
+                }else if (b_attr > a_attr){
+                    return 1;
+                }else{
+                    if (self.G.getNodeAttribute(a, "label")> self.G.getNodeAttribute(b, "label")){
+                        return -1;
+                    }else if (self.G.getNodeAttribute(a, "label")< self.G.getNodeAttribute(b, "label")){
+                        return 1
+                    }else{
+                        return 0;
+                    }
+                }
+            }
+        }
+        let allNodes = this.G.nodes();
+        allNodes.sort(compare);
+        return allNodes;
+    }
 
+    /**
+     * Color the nodes in based on key
+     * 
+     * @param {String} [prop="label"]
+     */
+    colorNodes(prop="label", chroma_scale="OrRd"){
+        var all_prop_vals = Object.keys(this._nodeAttrs[prop]);
+        let all_colors = chroma.scale(chroma_scale).colors(all_prop_vals.length);
 
+        this.G.forEachNode((idx, node) => {
+            node.color = "#000";
+            node.originalColor = "#000";
+        })
+        for (var prop_val in this._nodeAttrs[prop]){
+            this._nodeAttrs[prop][prop_val].forEach((node)=>{
+                let color_idx = all_prop_vals.indexOf(prop_val);
+                let color = all_colors[color_idx];
 
-
-module.exports = {
-    NeuGraphModel : NeuGraphModel,
-    NeuGraphView : NeuGraphView
-};
+                this.G.setNodeAttribute(node, "color", color);
+                this.G.setNodeAttribute(node, "originalColor", color);
+            })
+        }
+    }
+}
