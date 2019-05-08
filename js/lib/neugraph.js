@@ -1,4 +1,5 @@
 var widgets = require('@jupyter-widgets/base');
+
 var _ = require('lodash');
 var SigmaGraph = require('./graph').SigmaGraph;
 // Custom Model. Custom widgets models must at least provide default values
@@ -55,7 +56,9 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         this.container = this.graph.container;
 
         this.refresh();
-        this.model.on('change:data_changed', this.dataChanged, this);        
+        this.model.on('change:data_changed', this.dataChanged, this);
+        this.model.on('change:callback_fired', this.callbackFired, this); 
+        // this.model.on('change:start_layout', this.toggleLayout, this); 
     },
 
     dataChanged: function() {
@@ -79,10 +82,35 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         if (this.model.get('start_layout')){
             this.graph.layoutButton.click();
         }
-    }
+    },
+
+    // toggleLayout: function(){
+    //     let state = this.model.get('start_layout');
+    //     if (state){
+    //         this.graph.layoutButton.click();
+    //     }
+    //     this.model.set('start_layout', !state);
+    //     this.touch();
+    // },
+
+    callbackFired: function() {
+        if (this.model.get("callback_fired") == false){
+            return;
+        }
+
+        let callback_dict = this.model.get("callback_dict");
+        for (var func in callback_dict){
+            if (! (func in this.graph.callback_registry)){
+                continue;
+            }
+            let _callback = this.graph.callback_registry[func].bind(this.graph);
+            _callback(...callback_dict[func]);
+        }
+        this.model.set('callback_fired', false);
+        this.touch();
+
+    },
 });
-
-
 
 
 

@@ -1,7 +1,10 @@
 var Graph = require('graphology');
 var WebGLRenderer =  require('sigma/renderers/webgl').default;
+
 import { animateNodes } from  'sigma/animate';
 var FA2Layout =  require('graphology-layout-forceatlas2/worker');
+import degree from 'graphology-metrics/degree';
+
 var format =  require('d3-format').format;
 var chroma = require('chroma-js');
 
@@ -21,7 +24,7 @@ export class SigmaGraph{
         this._nodeAttrs = _graph_dict.nodeAttrs;
         this._edgeAttrs = _graph_dict.edgeAttrs;
 
-        this.layout = new FA2Layout(this.G, {
+        this.forceLayout = new FA2Layout(this.G, {
             settings: this._getFA2Settings(this.G)
         });
         this.description = this._getGraphDescription(this.G);
@@ -31,6 +34,12 @@ export class SigmaGraph{
 
         // this._dragging = false;
         // this._draggedNode = undefined;
+        this.callback_registry = {
+            'gridLayout': this.gridLayout,
+            'forceLayout': this.toggleForceLayout,
+            'colorNodes': this.colorNodes,
+            'resizeNodes': this.resizeNodes,
+        }
     }
 
     /**
@@ -48,15 +57,21 @@ export class SigmaGraph{
         this._edgeAttrs = G_dict.edgeAttrs;
 
         this.renderer.kill();
-        this.layout.kill();
-        delete this.layout;
-        this.layout = new FA2Layout(this.G, {
+        this.forceLayout.kill();
+        delete this.forceLayout;
+        this.forceLayout = new FA2Layout(this.G, {
             settings: this._getFA2Settings(this.G)
         });
         this.initCanvas();
         this.initRenderer();
     }
     
+    /**
+     * Toggle force layout
+     */
+    toggleForceLayout(){
+        this.forceLayoutButton.click();
+    }
     /**
      * show node attributes in dat.gui 'Node Attributes' folder
      * @param {json} attrs 
@@ -147,6 +162,25 @@ export class SigmaGraph{
         data.nodes.forEach((node)=> {
             let key = node[0];
             let attrs = node[1];
+
+            graph.addNode(key, attrs);
+            // update nodes properties
+            for (var prop in attrs){
+                let prop_val = attrs[prop]
+                if (nodeAttrs == undefined){
+                    nodeAttrs = {};
+                    nodeAttrs[prop] = {}
+                    nodeAttrs[prop][prop_val] = [key];
+                }else if (!(prop in nodeAttrs)){
+                    nodeAttrs[prop] = {}
+                    nodeAttrs[prop][prop_val] = [key];
+                }else if (!(prop_val in nodeAttrs[prop])){
+                    nodeAttrs[prop][prop_val] = [key];
+                }else{
+                    nodeAttrs[prop][prop_val].push(key);
+                }
+            }
+
             attrs.z = 1;
     
             if (!attrs.viz)
@@ -167,47 +201,12 @@ export class SigmaGraph{
     
             if (!attrs.label)
                 attrs.label = key;
-    
-            graph.addNode(key, attrs);
-            // update nodes properties
-            for (var prop in attrs){
-                let prop_val = attrs[prop]
-                if (nodeAttrs == undefined){
-                    nodeAttrs = {};
-                    nodeAttrs[prop] = {}
-                    nodeAttrs[prop][prop_val] = [key];
-                }else if (!(prop in nodeAttrs)){
-                    nodeAttrs[prop] = {}
-                    nodeAttrs[prop][prop_val] = [key];
-                }else if (!(prop_val in nodeAttrs[prop])){
-                    nodeAttrs[prop][prop_val] = [key];
-                }else{
-                    nodeAttrs[prop][prop_val].push(key);
-                }
-            }
         });
     
         data.edges.forEach((edge) => {
             let source = edge[0];
             let target = edge[1];
             let attrs = edge[2];
-            
-            attrs.z = 1;
-    
-            if (!attrs.viz)
-                attrs.viz = {};
-    
-            if (!attrs.color) {
-                attrs.color = '#CCC';
-                attrs.originalColor = attrs.color;
-            }
-    
-            if (graph.hasEdge(source, target)){
-                graph.upgradeToMulti();
-            }
-
-            graph.addEdge(source, target, attrs);
-
             // update edges properties
             for (var prop in attrs){
                 let prop_val = attrs[prop]
@@ -224,7 +223,58 @@ export class SigmaGraph{
                     edgeAttrs[prop][prop_val].push([source, target]);
                 }
             }
+
+            attrs.z = 1;
+    
+            if (!attrs.viz)
+                attrs.viz = {};
+    
+            if (!attrs.color) {
+                attrs.color = '#CCC';
+                attrs.originalColor = attrs.color;
+            }
+
+            if (graph.hasEdge(source, target)){
+                graph.upgradeToMulti();
+            }
+
+            graph.addEdge(source, target, attrs);
         });
+
+
+        
+        nodeAttrs["degree"] = {};
+        const degrees = degree(graph);
+        graph.forEachNode((node, attrs)=>{
+            let _degree = degrees[node];
+            if (_degree in nodeAttrs['degree']){
+                nodeAttrs['degree'][_degree].push(node);
+            }else{
+                nodeAttrs['degree'][_degree] = [node];
+            }
+            
+        });
+        nodeAttrs["inDegree"] = {};
+        const inDegrees = degree.inDegree(graph);
+        graph.forEachNode((node, attrs)=>{
+            let _degree = inDegrees[node];
+            if (_degree in nodeAttrs['inDegree']){
+                nodeAttrs['inDegree'][_degree].push(node);
+            }else{
+                nodeAttrs['inDegree'][_degree] = [node];
+            }
+        });
+        nodeAttrs["outDegree"] = {};
+        const outDegrees = degree.outDegree(graph);
+        graph.forEachNode((node, attrs)=>{
+            let _degree = outDegrees[node];
+            if (_degree in nodeAttrs['outDegree']){
+                nodeAttrs['outDegree'][_degree].push(node);
+            }else{
+                nodeAttrs['outDegree'][_degree] = [node];
+            }
+        });
+        
         return {
             graph: graph,
             nodeAttrs: nodeAttrs,
@@ -264,19 +314,19 @@ export class SigmaGraph{
         layoutButton.setAttribute('title', 'Start layout');
         
         layoutButton.onclick = ()=> {
-            if (this.layout && this.layout.running) {
+            if (this.forceLayout && this.forceLayout.running) {
                 layoutButton.textContent = START_ICON;
                 layoutButton.setAttribute('title', 'Start layout');
-                this.layout.stop();
+                this.forceLayout.stop();
             }
             else {
                 layoutButton.textContent = PAUSE_ICON;
                 layoutButton.setAttribute('title', 'Stop layout');
-                this.layout.start();
+                this.forceLayout.start();
             }
         };
         
-        this.layoutButton = layoutButton;
+        this.forceLayoutButton = layoutButton;
         
         let unzoomButton = document.createElement('button');
         
@@ -366,7 +416,7 @@ export class SigmaGraph{
     /**
      * Show nodes in a grid
      */
-    gridLayout(NRows=undefined, prop="label", order="ascend", chroma_scale="OrRd") {
+    gridLayout(prop="label", NRows=undefined, order="ascend", chroma_scale="OrRd") {
         let totWidth = 100;
         let totHeight = 100;
 
@@ -550,9 +600,9 @@ export class SigmaGraph{
         var all_prop_vals = Object.keys(this._nodeAttrs[prop]);
         let all_colors = chroma.scale(chroma_scale).colors(all_prop_vals.length);
 
-        this.G.forEachNode((idx, node) => {
-            node.color = "#000";
-            node.originalColor = "#000";
+        this.G.forEachNode((node, attrs) => {
+            attrs.color = "#000";
+            attrs.originalColor = "#000";
         })
         for (var prop_val in this._nodeAttrs[prop]){
             this._nodeAttrs[prop][prop_val].forEach((node)=>{
@@ -562,6 +612,42 @@ export class SigmaGraph{
                 this.G.setNodeAttribute(node, "color", color);
                 this.G.setNodeAttribute(node, "originalColor", color);
             })
+        }
+    }
+
+    /**
+     * resize the nodes in based on key
+     * 
+     * @param {String} [prop="label"]
+     */
+    resizeNodes(prop="degree", minSize=2, maxSize=20){
+        var self = this;
+
+        var all_prop_vals = Object.keys(self._nodeAttrs[prop]);
+        function thisSize(node, prop_val){
+            let minVal = minSize;
+            let maxVal = maxSize;
+            let _relative_size = null;
+            if (!isNaN(all_prop_vals[0])){  // property is a number
+                all_prop_vals.forEach((val,idx)=>{
+                    all_prop_vals[idx] = parseFloat(val);
+                })
+                minVal = Math.min(...all_prop_vals);
+                maxVal = Math.max(...all_prop_vals);
+                prop_val = parseFloat(prop_val);
+                _relative_size = (prop_val - minVal)/(maxVal - minVal);
+            }else{   // property is a string
+                let sorted_nodes = self._sortNodes(prop, "ascend");
+                _relative_size = (sorted_nodes.indexOf(node))/self.G.order;
+            }
+            return _relative_size*(maxSize-minSize)+minSize;
+        }
+
+        for (var prop_val in self._nodeAttrs[prop]){
+            for (var node of self._nodeAttrs[prop][prop_val]){
+                let size = thisSize(node, prop_val);
+                self.G.setNodeAttribute(node, "size", size);
+            }
         }
     }
 }
