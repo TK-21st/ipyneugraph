@@ -417,6 +417,9 @@ export class SigmaGraph{
      * Show nodes in a grid
      */
     gridLayout(prop="label", NRows=undefined, order="ascend", chroma_scale="OrRd") {
+        if (typeof(NRows) != "number"){
+            NRows = undefined;
+        }
         let totWidth = 100;
         let totHeight = 100;
 
@@ -556,6 +559,17 @@ export class SigmaGraph{
         function compare(a,b){
             let a_attr = self.G.getNodeAttribute(a, prop);
             let b_attr = self.G.getNodeAttribute(b, prop);
+            if (prop =="degree"){
+                a_attr = self.G.degree(a);
+                b_attr = self.G.degree(b);
+            }else if (prop =="inDegree"){
+                a_attr = self.G.inDegree(a);
+                b_attr = self.G.inDegree(b);
+            }else if (prop =="outDegree"){
+                a_attr = self.G.outDegree(a);
+                b_attr = self.G.outDegree(b);
+            }
+            
             if (order === "ascend"){
                 if (a_attr > b_attr){
                     return 1;

@@ -36,6 +36,9 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
     initialize: function(){
         this.renderSigma = this.renderSigma.bind(this);
         window.graph = this;
+        this.model.set('value', '1232');
+        this.model.set('value_bf', true);
+        this.touch();
     },
 
     render: function() {
@@ -58,6 +61,8 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         this.refresh();
         this.model.on('change:data_changed', this.dataChanged, this);
         this.model.on('change:callback_fired', this.callbackFired, this); 
+
+
         // this.model.on('change:start_layout', this.toggleLayout, this); 
     },
 
@@ -66,9 +71,17 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
             return;
         }
         let new_G_dict = this.graph.buildGraph(this.model.get('data'));
-        this.graph.updateGraph(new_G_dict);
-        this.model.set('data_changed', false);
-        this.touch();
+        let callback_promise = new Promise((resolve, reject)=>{
+            this.graph.updateGraph(new_G_dict);
+            resolve(1);
+        });
+        callback_promise.then(()=>{
+            this.model.set('data_changed', false);
+            this.touch();
+        }).catch(()=>{
+            this.model.set('data_changed', false);
+            this.touch();            
+        });
     },
 
 
@@ -94,21 +107,28 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
     // },
 
     callbackFired: function() {
-        if (this.model.get("callback_fired") == false){
-            return;
-        }
+        // if (this.model.get("callback_fired") == false){
+        //     return;
+        // }
 
         let callback_dict = this.model.get("callback_dict");
-        for (var func in callback_dict){
-            if (! (func in this.graph.callback_registry)){
-                continue;
+        let callback_promise = new Promise((resolve, reject)=>{
+            for (var func in callback_dict){
+                if (! (func in this.graph.callback_registry)){
+                    continue;
+                }
+                let _callback = this.graph.callback_registry[func].bind(this.graph);
+                _callback(...callback_dict[func]);
             }
-            let _callback = this.graph.callback_registry[func].bind(this.graph);
-            _callback(...callback_dict[func]);
-        }
-        this.model.set('callback_fired', false);
-        this.touch();
-
+            resolve(1);
+        });
+        callback_promise.then(()=>{
+            this.model.set('callback_fired', false);
+            this.touch();
+        }).catch(()=>{
+            this.model.set('callback_fired', false);
+            this.touch();            
+        });
     },
 });
 

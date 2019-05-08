@@ -14,6 +14,8 @@ class NeuGraph(widgets.DOMWidget):
     _model_module = Unicode('ipyneugraph').tag(sync=True)
     _view_module_version = Unicode('^0.1.0').tag(sync=True)
     _model_module_version = Unicode('^0.1.0').tag(sync=True)
+    value = Unicode('test').tag(sync=True)
+    value_bf = Bool(False).tag(sync=True)
 
     data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     callback_dict = Dict({}).tag(sync=True)  # which callback to fire and options
