@@ -1,6 +1,7 @@
 import ipywidgets as widgets
 from traitlets import Unicode, Dict, Int, Bool
 import networkx as nx
+import h5py
 
 @widgets.register
 class NeuGraph(widgets.DOMWidget):
@@ -17,11 +18,15 @@ class NeuGraph(widgets.DOMWidget):
     value = Unicode('test').tag(sync=True)
     value_bf = Bool(False).tag(sync=True)
 
-    data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
+    graph_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
+    graph_data_changed = Bool(False).tag(sync=True)
+
+    io_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
+    io_data_changed = Bool(False).tag(sync=True)
+
     callback_dict = Dict({}).tag(sync=True)  # which callback to fire and options
     height = Int(500).tag(sync=True)
     start_layout = Bool(False).tag(sync=True)
-    data_changed = Bool(False).tag(sync=True)
     callback_fired = Bool(False).tag(sync=True)
 
     def __init__(self, graph, height=500, start_layout=False, **kwargs):
@@ -30,7 +35,7 @@ class NeuGraph(widgets.DOMWidget):
         nodes = list(graph.nodes(data=True))
         edges = list(graph.edges(data=True))
 
-        self.data = {
+        self.graph_data = {
             'nodes': nodes,
             'edges': edges,
             'directed': graph.is_directed()
@@ -51,12 +56,12 @@ class NeuGraph(widgets.DOMWidget):
         nodes = list(g.nodes(data=True))
         edges = list(g.edges(data=True))
 
-        self.data = {
+        self.graph_data = {
             'nodes': nodes,
             'edges': edges,
             'directed': g.is_directed()
         }
-        self.data_changed = True
+        self.graph_data_changed = True
         return
 
     def fire_callback(self, callback, options):
@@ -94,3 +99,15 @@ class NeuGraph(widgets.DOMWidget):
     #     for (node, nodedata) in self.G:
     #         func(nodedata[prop])
     #     pass
+
+    def load_IO(self, fname, IO='input'):
+        """Load h5 Input/Output Files
+
+        Parameter
+        ---------
+        fname: string
+            file name to be loaded
+        IO: string, optional
+            whether the file is input or output
+        """
+        pass

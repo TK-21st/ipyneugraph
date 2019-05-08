@@ -10,3 +10,4 @@ ipyneugraph/static/
 
 # OS X
 .DS_Store
+*.h5

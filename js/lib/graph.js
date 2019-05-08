@@ -17,9 +17,9 @@ const MUTED_COLOR = '#FBFBFB';
 const NUMBER_FORMAT = format(',');
 
 export class SigmaGraph{
-    constructor(container, data, options={}){
+    constructor(container, graph_data, options={}){
         this.container = container;
-        let _graph_dict = this.buildGraph(data)
+        let _graph_dict = this.buildGraph(graph_data)
         this.G = _graph_dict.graph;
         this._nodeAttrs = _graph_dict.nodeAttrs;
         this._edgeAttrs = _graph_dict.edgeAttrs;
@@ -36,7 +36,7 @@ export class SigmaGraph{
         // this._draggedNode = undefined;
         this.callback_registry = {
             'gridLayout': this.gridLayout,
-            'forceLayout': this.toggleForceLayout,
+            'toggleForceLayout': this.toggleForceLayout,
             'colorNodes': this.colorNodes,
             'resizeNodes': this.resizeNodes,
         }
@@ -153,13 +153,13 @@ export class SigmaGraph{
     
     /**
      * contruct graph from data
-     * @param {object} data {'nodes':[ ],'edges':[ ],directed:bool}
+     * @param {object} graph_data {'nodes':[ ],'edges':[ ],directed:bool}
      */
-    buildGraph(data){
-        let graph = new Graph({type: data.directed ? 'directed': 'undirected'});
+    buildGraph(graph_data){
+        let graph = new Graph({type: graph_data.directed ? 'directed': 'undirected'});
         let nodeAttrs = undefined;
         let edgeAttrs = undefined;
-        data.nodes.forEach((node)=> {
+        graph_data.nodes.forEach((node)=> {
             let key = node[0];
             let attrs = node[1];
 
@@ -203,7 +203,7 @@ export class SigmaGraph{
                 attrs.label = key;
         });
     
-        data.edges.forEach((edge) => {
+        graph_data.edges.forEach((edge) => {
             let source = edge[0];
             let target = edge[1];
             let attrs = edge[2];

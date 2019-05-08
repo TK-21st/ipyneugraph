@@ -45,7 +45,7 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         var self = this;
 
         var height = this.model.get('height');
-        var data = this.model.get('data');
+        var graph_data = this.model.get('graph_data');
 
         var el = this.el;
         el.style.height = "100%";
@@ -56,31 +56,31 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         container.style.height = '100%'; //height + 'px';
         el.appendChild(container);
 
-        this.graph = new SigmaGraph(container, data);
+        this.graph = new SigmaGraph(container, graph_data);
         this.container = this.graph.container;
 
         this.refresh();
-        this.model.on('change:data_changed', this.dataChanged, this);
+        this.model.on('change:graph_data_changed', this.graphDataChanged, this);
         this.model.on('change:callback_fired', this.callbackFired, this); 
 
 
         // this.model.on('change:start_layout', this.toggleLayout, this); 
     },
 
-    dataChanged: function() {
-        if (this.model.get('data_changed') == false){
+    graphDataChanged: function() {
+        if (this.model.get('graph_data_changed') == false){
             return;
         }
-        let new_G_dict = this.graph.buildGraph(this.model.get('data'));
+        let new_G_dict = this.graph.buildGraph(this.model.get('graph_data'));
         let callback_promise = new Promise((resolve, reject)=>{
             this.graph.updateGraph(new_G_dict);
             resolve(1);
         });
         callback_promise.then(()=>{
-            this.model.set('data_changed', false);
+            this.model.set('graph_data_changed', false);
             this.touch();
         }).catch(()=>{
-            this.model.set('data_changed', false);
+            this.model.set('graph_data_changed', false);
             this.touch();            
         });
     },
@@ -98,19 +98,10 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         }
     },
 
-    // toggleLayout: function(){
-    //     let state = this.model.get('start_layout');
-    //     if (state){
-    //         this.graph.layoutButton.click();
-    //     }
-    //     this.model.set('start_layout', !state);
-    //     this.touch();
-    // },
-
     callbackFired: function() {
-        // if (this.model.get("callback_fired") == false){
-        //     return;
-        // }
+        if (this.model.get("callback_fired") == false){
+            return;
+        }
 
         let callback_dict = this.model.get("callback_dict");
         let callback_promise = new Promise((resolve, reject)=>{
