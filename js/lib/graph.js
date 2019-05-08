@@ -638,18 +638,25 @@ export class SigmaGraph{
         var self = this;
 
         var all_prop_vals = Object.keys(self._nodeAttrs[prop]);
+        if (!isNaN(all_prop_vals[0])){  // conver to numeric if property is a number
+            all_prop_vals.forEach((val,idx)=>{
+                all_prop_vals[idx] = parseFloat(val);
+            })
+        }
         function thisSize(node, prop_val){
             let minVal = minSize;
             let maxVal = maxSize;
             let _relative_size = null;
             if (!isNaN(all_prop_vals[0])){  // property is a number
-                all_prop_vals.forEach((val,idx)=>{
-                    all_prop_vals[idx] = parseFloat(val);
-                })
                 minVal = Math.min(...all_prop_vals);
                 maxVal = Math.max(...all_prop_vals);
                 prop_val = parseFloat(prop_val);
-                _relative_size = (prop_val - minVal)/(maxVal - minVal);
+
+                if (maxVal == minVal){
+                    _relative_size = 0.5;
+                }else{
+                    _relative_size = (prop_val - minVal)/(maxVal - minVal);
+                }
             }else{   // property is a string
                 let sorted_nodes = self._sortNodes(prop, "ascend");
                 _relative_size = (sorted_nodes.indexOf(node))/self.G.order;

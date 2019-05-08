@@ -48,11 +48,12 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         var data = this.model.get('data');
 
         var el = this.el;
-        el.style.height = height + 'px';
+        el.style.height = "100%";
+        el.style['min-height']=  height + 'px';
 
         var container = document.createElement('div');
         container.style.width = '100%';
-        container.style.height = height + 'px';
+        container.style.height = '100%'; //height + 'px';
         el.appendChild(container);
 
         this.graph = new SigmaGraph(container, data);
