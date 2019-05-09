@@ -71,7 +71,9 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
      * Plot Nodes 
      */
     plotNodesIO: function(nodes) {
-        this.model.set('plotted_nodes', nodes);
+        console.log('PlotNODES');
+        this.model.set('plotted_nodes', Array.from(nodes));
+        this.model.set('plotted_nodes_changed', true);
         this.touch();
     },
 

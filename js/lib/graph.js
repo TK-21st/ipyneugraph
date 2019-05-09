@@ -58,6 +58,7 @@ export class SigmaGraph extends EventEmitter{
         delete this.G;
 
         this.G = G_dict.graph;
+        this.description = this._getGraphDescription(this.G);
         this._nodeAttrs = G_dict.nodeAttrs;
         this._edgeAttrs = G_dict.edgeAttrs;
 
@@ -429,7 +430,7 @@ export class SigmaGraph extends EventEmitter{
         let plotButton = document.createElement('button');
         
         plotButton.style.position = 'absolute';
-        plotButton.style.bottom = (28 + 5 + 28 + 5 + 28 + 5 + 28) + 'px';
+        plotButton.style.bottom = (28 + 5 + 28 + 5 + 28 + 5 + 28 + 5 + 28) + 'px';
         plotButton.style.right = '10px';
         plotButton.style.zIndex = '10';
         plotButton.style.width = '28px';

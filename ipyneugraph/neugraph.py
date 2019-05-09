@@ -21,8 +21,9 @@ class NeuGraph(widgets.DOMWidget):
     graph_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     graph_data_changed = Bool(False).tag(sync=True)
 
-
     plotted_nodes = Set().tag(sync=True)
+    plotted_nodes_changed = Bool(False).tag(sync=True)
+
     io_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     io_data_changed = Bool(False).tag(sync=True)
 
@@ -51,6 +52,7 @@ class NeuGraph(widgets.DOMWidget):
         self.height = height
         self.start_layout = start_layout
         self.observe(self.plot_IO, names='plotted_nodes')
+        self.observe(self.plot_IO, names='plotted_nodes_changed')
 
     @staticmethod
     def from_gexf(handle, *args, **kwargs):
@@ -129,10 +131,10 @@ class NeuGraph(widgets.DOMWidget):
         else:
             raise NotImplementedError
 
-    def plot_IO(self, nodes):
-        print(nodes)
+    def plot_IO(self, changes):
         if self.file_i is None:
-            print('plotting', nodes)
+            print('plotting I')
         if self.file_o is not None:
-            print('plotting', nodes)
+            print('plotting O')
         pass
+        # self.plotted_nodes_changed.set)
