@@ -1,5 +1,6 @@
 import ipywidgets as widgets
-from traitlets import Unicode, Dict, Int, Bool, Set
+from traitlets import Unicode, Dict, Int, Bool, List
+from IPython.display import display
 import networkx as nx
 import h5py
 
@@ -15,24 +16,25 @@ class NeuGraph(widgets.DOMWidget):
     _model_module = Unicode('ipyneugraph').tag(sync=True)
     _view_module_version = Unicode('^0.1.0').tag(sync=True)
     _model_module_version = Unicode('^0.1.0').tag(sync=True)
-    value = Unicode('test').tag(sync=True)
+    value = Unicode('NOT FIRED').tag(sync=True)
     value_bf = Bool(False).tag(sync=True)
+    test_callback = Bool(False).tag(sync=True)
 
     graph_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     graph_data_changed = Bool(False).tag(sync=True)
 
-    plotted_nodes = Set().tag(sync=True)
+    plotted_nodes = List([]).tag(sync=True)
     plotted_nodes_changed = Bool(False).tag(sync=True)
 
     io_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     io_data_changed = Bool(False).tag(sync=True)
 
     callback_dict = Dict({}).tag(sync=True)  # which callback to fire and options
-    height = Int(500).tag(sync=True)
-    start_layout = Bool(False).tag(sync=True)
     callback_fired = Bool(False).tag(sync=True)
 
-    
+    height = Int(500).tag(sync=True)
+    start_layout = Bool(False).tag(sync=True)
+
 
     def __init__(self, graph, height=500, start_layout=False, **kwargs):
         super(NeuGraph, self).__init__(**kwargs)
@@ -51,8 +53,10 @@ class NeuGraph(widgets.DOMWidget):
 
         self.height = height
         self.start_layout = start_layout
-        self.observe(self.plot_IO, names='plotted_nodes')
-        self.observe(self.plot_IO, names='plotted_nodes_changed')
+        # self.observe(self.plot_IO, names='plotted_nodes')
+        # self.observe(self.plot_IO, names='plotted_nodes_changed')
+        self.observe(self.handle_callback, names=['plotted_nodes_changed'])
+        self.observe(self.handle_callback_test, names=['test_callback'])
 
     @staticmethod
     def from_gexf(handle, *args, **kwargs):
@@ -109,8 +113,13 @@ class NeuGraph(widgets.DOMWidget):
     #         func(nodedata[prop])
     #     pass
 
-    def test_callback(self, change):
-        print("test",change)
+    def handle_callback(self, change):
+        self.value = "FIRED REAL"
+        print(change)
+
+    def handle_callback_test(self, change):
+        self.value = "FIRED TEST"
+        print(change)
 
     def load_IO(self, fname, IO='input'):
         """Load h5 Input/Output Files
@@ -132,9 +141,17 @@ class NeuGraph(widgets.DOMWidget):
             raise NotImplementedError
 
     def plot_IO(self, changes):
+        self.value = "plot_IO"
+        print('test')
         if self.file_i is None:
             print('plotting I')
         if self.file_o is not None:
             print('plotting O')
         pass
         # self.plotted_nodes_changed.set)
+
+
+    @staticmethod
+    def remove_synapse(G):
+        newG = nx.DiGraph()
+        

@@ -36,14 +36,10 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
     initialize: function(){
         this.renderSigma = this.renderSigma.bind(this);
         window.graph = this;
-        this.model.set('value', '1232');
-        this.model.set('value_bf', true);
-        this.touch();
     },
 
     render: function() {
         var self = this;
-
         var height = this.model.get('height');
         var graph_data = this.model.get('graph_data');
 
@@ -51,10 +47,12 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         el.style.height = "100%";
         el.style['min-height']=  height + 'px';
 
+
         var container = document.createElement('div');
         container.style.width = '100%';
         container.style.height = '100%'; //height + 'px';
         el.appendChild(container);
+
 
         this.graph = new SigmaGraph(container, graph_data);
         this.container = this.graph.container;
@@ -62,20 +60,14 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         this.refresh();
         this.model.on('change:graph_data_changed', this.graphDataChanged, this);
         this.model.on('change:callback_fired', this.callbackFired, this); 
-        this.graph.on('plotNodesIO', (nodes) => { this.plotNodesIO(nodes) }, this);
 
-        // this.model.on('change:start_layout', this.toggleLayout, this); 
+        this.graph.on('plotNodesIO', (nodes)=>{
+            this.model.set('plotted_nodes', Array.from(nodes));
+            this.model.set('plotted_nodes_changed', true);
+            this.touch();
+        });
     },
 
-    /**
-     * Plot Nodes 
-     */
-    plotNodesIO: function(nodes) {
-        console.log('PlotNODES');
-        this.model.set('plotted_nodes', Array.from(nodes));
-        this.model.set('plotted_nodes_changed', true);
-        this.touch();
-    },
 
     graphDataChanged: function() {
         if (this.model.get('graph_data_changed') == false){
