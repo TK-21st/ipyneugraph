@@ -78,7 +78,7 @@ export class SigmaGraph extends EventEmitter{
      * @param {*} nodes 
      */
     plotNodesIO(nodes){
-        if (this.plottedNodes.size == 0){
+        if (nodes.size == 0){
             return;
         }
         this.emit('plotNodesIO', nodes);

@@ -1,8 +1,12 @@
 import ipywidgets as widgets
-from traitlets import Unicode, Dict, Int, Bool, List
+from traitlets import Unicode, Dict, Int, Bool, List, Set, Bytes
 from IPython.display import display
+import matplotlib
+import matplotlib.pyplot as plt
 import networkx as nx
 import h5py
+import numpy as np
+import io
 
 @widgets.register
 class NeuGraph(widgets.DOMWidget):
@@ -16,18 +20,17 @@ class NeuGraph(widgets.DOMWidget):
     _model_module = Unicode('ipyneugraph').tag(sync=True)
     _view_module_version = Unicode('^0.1.0').tag(sync=True)
     _model_module_version = Unicode('^0.1.0').tag(sync=True)
-    value = Unicode('NOT FIRED').tag(sync=True)
-    value_bf = Bool(False).tag(sync=True)
-    test_callback = Bool(False).tag(sync=True)
+    value = Unicode("NOT FIRED").tag(sync=True)
 
     graph_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
     graph_data_changed = Bool(False).tag(sync=True)
 
-    plotted_nodes = List([]).tag(sync=True)
+    plotted_nodes = Set().tag(sync=True)
     plotted_nodes_changed = Bool(False).tag(sync=True)
 
-    io_data = Dict({'nodes': [], 'edges': [], 'directed': False}).tag(sync=True)
-    io_data_changed = Bool(False).tag(sync=True)
+    io_figure = Bytes(b'').tag(sync=True)
+    # io_figures = Dict({'None':''}).tag(sync=True)
+    io_figure_updated = Bool(False).tag(sync=True)
 
     callback_dict = Dict({}).tag(sync=True)  # which callback to fire and options
     callback_fired = Bool(False).tag(sync=True)
@@ -51,12 +54,29 @@ class NeuGraph(widgets.DOMWidget):
         self.file_i = None # input h5py file
         self.file_o = None # output h5py file
 
+        # we assume the entire simulation has the same time vector
+        self.dt = 1 # time step for simulation, default to 1
+        self.Nt = None # number of time steps
+        self.time_vector = None # time vector in [sec] 
+
         self.height = height
         self.start_layout = start_layout
-        # self.observe(self.plot_IO, names='plotted_nodes')
-        # self.observe(self.plot_IO, names='plotted_nodes_changed')
-        self.observe(self.handle_callback, names=['plotted_nodes_changed'])
-        self.observe(self.handle_callback_test, names=['test_callback'])
+
+        self.observe(self.plot_IO, names='plotted_nodes_changed')
+
+        # {
+        #    node_uid: {
+        #       'input': {
+        #           'I': [],
+        #           'g': [],
+        #        },
+        #       'output': {
+        #           'V': [],
+        #           'spike_state': []
+        #        }
+        #    }
+        # }
+        self._data_cache = {} 
 
     @staticmethod
     def from_gexf(handle, *args, **kwargs):
@@ -113,15 +133,7 @@ class NeuGraph(widgets.DOMWidget):
     #         func(nodedata[prop])
     #     pass
 
-    def handle_callback(self, change):
-        self.value = "FIRED REAL"
-        print(change)
-
-    def handle_callback_test(self, change):
-        self.value = "FIRED TEST"
-        print(change)
-
-    def load_IO(self, fname, IO='input'):
+    def load_IO(self, fname, IO='input', mode='r'):
         """Load h5 Input/Output Files
 
         Parameter
@@ -131,27 +143,87 @@ class NeuGraph(widgets.DOMWidget):
         IO: string, optional
             whether the file is input or output
         """
-        if IO == 'input':
-            self.file_i = h5py.File(fname)
-            self.filename_i = fname
-        elif IO == 'output':
-            self.file_o = h5py.File(fname)
+        if IO == 'output':
+            self.file_o = h5py.File(fname, mode)
+            self.dt = self.file_o['metadata'].attrs['dt']
             self.filename_o = fname
+            for key in self.file_o.keys():
+                if key == 'metadata':
+                    continue
+                uids = list(self.file_o[key+'/uids'][()].astype(str))
+                Nt = self.file_o[key+'/data'].shape[0]
+                if self.Nt is None:
+                    self.Nt = Nt
+                else:
+                    assert self.Nt == Nt, "Time step of {} is not consistent with previously set length".format(key)
+                self.time_vector = np.arange(0, Nt*self.dt, self.dt)
+                for id in uids:
+                    if not id in self._data_cache: 
+                        self._data_cache[id] = {}
+                    if not 'output' in self._data_cache[id]:
+                        self._data_cache[id]['output'] = {}
+                    self._data_cache[id]['output'][key] = None
+        elif IO == 'input':
+            self.file_i = h5py.File(fname, mode)
+            self.filename_i = fname
+            for key in self.file_i.keys():
+                uids = list(self.file_i[key+'/uids'][()].astype(str))
+                Nt = self.file_i[key+'/data'].shape[0]
+                if self.Nt is None:
+                    self.Nt = Nt
+                else:
+                    assert self.Nt == Nt, "Time step of {} is not consistent with previously set length".format(key)
+                self.time_vector = np.arange(0, Nt*self.dt, self.dt)
+                for id in uids:
+                    if not id in self._data_cache: 
+                        self._data_cache[id] = {}
+                    if not 'input' in self._data_cache[id]:
+                        self._data_cache[id]['input'] = {}
+                    self._data_cache[id]['input'][key] = None
         else:
             raise NotImplementedError
 
     def plot_IO(self, changes):
-        self.value = "plot_IO"
-        print('test')
-        if self.file_i is None:
-            print('plotting I')
-        if self.file_o is not None:
-            print('plotting O')
-        pass
-        # self.plotted_nodes_changed.set)
+        """plot IO
+        """
+        self.value = 'FIRED'
+        fig = plt.figure(figsize=(10,10), dpi=200)
+        ax_i = fig.add_subplot(2,1,1)
+        ax_i.set_title('Input')
+        ax_o = fig.add_subplot(2,1,2)
+        ax_o.set_title('Output')
+        ax_o.set_xlabel('Time')
 
+        for id in self.plotted_nodes:
+            # input
+            try:
+                input_dict = self._data_cache[id]['input']
+                for var in input_dict:
+                    ax_i.plot(self.time_vector, input_dict[var], label="{}: {}".format(var, id))
+            except:
+                continue
+        for id in self.plotted_nodes:
+            # output
+            try:
+                output_dict = self._data_cache[id]['output']
+                for var in output_dict:
+                    ax_i.plot(self.time_vector, output_dict[var], label="{}: {}".format(var, id))
+            except:
+                continue
+
+        
+        self.io_figure = NeuGraph.fig2bytes(fig)
+        self.io_figure_updated = True
 
     @staticmethod
     def remove_synapse(G):
         newG = nx.DiGraph()
         
+
+    @staticmethod
+    def fig2bytes(fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=300)
+        bytes_src = buf.getvalue()
+        buf.close()
+        return bytes_src

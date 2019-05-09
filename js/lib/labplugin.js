@@ -10,6 +10,7 @@ module.exports = {
           version: ipyneugraph.version,
           exports: ipyneugraph
       });
+      window.app = app;
   },
   autoStart: true
 };
