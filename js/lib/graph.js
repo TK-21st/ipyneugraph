@@ -317,7 +317,19 @@ export class SigmaGraph extends EventEmitter{
         description.style.fontSize = '0.8em';
         description.style.fontStyle = 'italic';
         description.style.zIndex = '10';
-        description.innerHTML = this.description;
+        let descriptionText = document.createElement('div')
+        descriptionText.innerHTML = this.description;
+        let minBtn = document.createElement('button');
+        minBtn.innerHTML = '<i class="fas fa-window-minimize"></i>';
+        minBtn.onclick = ()=>{
+            if (descriptionText.style.display == 'block'){
+                descriptionText.style.display = 'hidden';
+            }else{
+                descriptionText.style.display = 'block';
+            }   
+        }
+        description.appendChild(minBtn);
+        description.appendChild(descriptionText);
         this.descriptionPanel = description;
         
         let layoutButton = document.createElement('button');
@@ -480,7 +492,7 @@ export class SigmaGraph extends EventEmitter{
             NCols = Math.ceil(this.G.order/NRows);
         }
         let orderedNodes = this._sortNodes(prop, order);
-        this.colorNodes(prop,chroma_scale);
+        // this.colorNodes(prop,chroma_scale);
 
         let new_positions = {};
         let col_res = totWidth/NCols;

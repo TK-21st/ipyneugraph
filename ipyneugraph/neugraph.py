@@ -117,7 +117,7 @@ class NeuGraph(widgets.DOMWidget):
                 'toggleForceLayout': []
             }
         self.callback_fired = True
-    
+        
     # def filter(self, prop, func):
     #     """ Filter graph 
     #     Returns reduced graph based on applying compare_func to property of each node
@@ -186,20 +186,25 @@ class NeuGraph(widgets.DOMWidget):
     def plot_IO(self, changes):
         """plot IO
         """
+        if self.plotted_nodes_changed == False:
+            return
         self.value = 'FIRED'
         fig = plt.figure(figsize=(10,10), dpi=200)
         ax_i = fig.add_subplot(2,1,1)
-        ax_i.set_title('Input')
+        ax_i.set_title('Input',fontsize=20)
         ax_o = fig.add_subplot(2,1,2)
-        ax_o.set_title('Output')
-        ax_o.set_xlabel('Time')
+        ax_o.set_title('Output',fontsize=20)
+        ax_o.set_xlabel('Time',fontsize=20)
 
         for id in self.plotted_nodes:
             # input
             try:
                 input_dict = self._data_cache[id]['input']
                 for var in input_dict:
-                    ax_i.plot(self.time_vector, input_dict[var], label="{}: {}".format(var, id))
+                    if input_dict[var] is None:
+                        idx = list(self.file_i[var+'/uids'][()].astype(str)).index(id)
+                        self._data_cache[id]['input'][var] = self.file_i[var+'/data'][:,idx]
+                    ax_i.plot(self.time_vector, self._data_cache[id]['input'][var], label="{}: {}".format(var, id))
             except:
                 continue
         for id in self.plotted_nodes:
@@ -207,11 +212,18 @@ class NeuGraph(widgets.DOMWidget):
             try:
                 output_dict = self._data_cache[id]['output']
                 for var in output_dict:
-                    ax_i.plot(self.time_vector, output_dict[var], label="{}: {}".format(var, id))
+                    if output_dict[var] is None:
+                        idx = list(self.file_o[var+'/uids'][()].astype(str)).index(id)
+                        self._data_cache[id]['output'][var] = self.file_o[var+'/data'][:,idx]
+                    ax_o.plot(self.time_vector, self._data_cache[id]['output'][var], label="{}: {}".format(var, id))
             except:
                 continue
 
-        
+        ax_i.legend(fontsize=20)
+        ax_o.legend(fontsize=20)
+        fig.tight_layout()
+
+        self.plotted_nodes_changed = False
         self.io_figure = NeuGraph.fig2bytes(fig)
         self.io_figure_updated = True
 

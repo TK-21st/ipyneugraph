@@ -60,8 +60,7 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         figure_container.style.width = '50%';
         figure_container.style.height = '100%'; //height + 'px';
         figure_container.style.cssFloat = 'right';
-        figure_container.textContent = "I/O Figure";
-        figure_container.style.borderColor = '#000';
+
         el.appendChild(figure_container);
         this.figure_container = figure_container;
 
@@ -78,25 +77,38 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
     },
 
     ioFigureUpdated: function(){
-        console.log('new Data');
-        let fig_bytes = this.model.get('io_figure');
-        let blob = new Blob([fig_bytes.buffer], {type: "image/PNG"});
-        let url = URL.createObjectURL(blob);
-        // let ul = div_fig.append('ul');
-        // ul.append('li').append('span').classed('add', true).html('&plus;');
-        // ul.append('li').append('span').classed('up', true).html('&rarr;');
-        // ul.append('li').append('span').classed('down', true).html('&rarr;');
-        this.figure_container.innerHTML = "";
-        let img_div = document.createElement("img");
-        img_div.style.height = "100%";
-        img_div.style.width = "100%";
-        img_div.src = url;
-        // this.figure_container.append('img').attr('src', url);
-        this.figure_container.appendChild(img_div);
-        this.model.set('io_figure_updated',false);
-        this.touch();
-        // new Panel()
-        // dump_data
+        if (this.model.get('io_figure_updated') == false){
+            return;
+        }
+        let callback_promise = new Promise((resolve, reject) => {
+            console.log('new Data');
+            let fig_bytes = this.model.get('io_figure');
+            let blob = new Blob([fig_bytes.buffer], { type: "image/PNG" });
+            let url = URL.createObjectURL(blob);
+            // let ul = div_fig.append('ul');
+            // ul.append('li').append('span').classed('add', true).html('&plus;');
+            // ul.append('li').append('span').classed('up', true).html('&rarr;');
+            // ul.append('li').append('span').classed('down', true).html('&rarr;');
+            this.figure_container.innerHTML = "";
+            let img_div = document.createElement("img");
+            img_div.style['border-style'] = 'solid';
+            img_div.style.display = "block";
+            img_div.style.height = "auto";
+            img_div.style.overflowY = "scroll";
+            img_div.style.width = "100%";
+            img_div.src = url;
+            // this.figure_container.append('img').attr('src', url);
+            this.figure_container.appendChild(img_div);
+
+            resolve(1);
+        });
+        callback_promise.then(() => {
+            this.model.set('io_figure_updated', false);
+            this.touch();
+        }).catch(() => {
+            this.model.set('io_figure_updated', false);
+            this.touch();
+        });
     },
 
     graphDataChanged: function() {
