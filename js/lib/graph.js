@@ -103,7 +103,7 @@ export class SigmaGraph extends EventEmitter{
             }
             txt += '<br>' + key + ': ' + value;
         }
-        this.descriptionPanel.innerHTML = txt;
+        this.descriptionPanel.children[1].innerHTML = txt;
     }
 
     /**
@@ -323,7 +323,7 @@ export class SigmaGraph extends EventEmitter{
         minBtn.innerHTML = '<i class="fas fa-window-minimize"></i>';
         minBtn.onclick = ()=>{
             if (descriptionText.style.display == 'block'){
-                descriptionText.style.display = 'hidden';
+                descriptionText.style.display = 'none';
             }else{
                 descriptionText.style.display = 'block';
             }   
