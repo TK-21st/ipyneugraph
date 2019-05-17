@@ -1,18 +1,16 @@
-import ipywidgets as widgets
-from traitlets import Unicode, Dict, Int, Bool, List, Set, Bytes
-from IPython.display import display
-import matplotlib
-import matplotlib.pyplot as plt
-import networkx as nx
-import h5py
-import numpy as np
 import io
+import h5py
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+import ipywidgets as widgets
+from traitlets import Unicode, Dict, Int, Bool, Set, Bytes
 
 @widgets.register
 class NeuGraph(widgets.DOMWidget):
     """
     Custom NeuGraph IPython widget.
-    """    
+    """
     _view_name = Unicode('NeuGraphView').tag(sync=True)
     _model_name = Unicode('NeuGraphModel').tag(sync=True)
     _view_module = Unicode('ipyneugraph').tag(sync=True)
@@ -66,7 +64,7 @@ class NeuGraph(widgets.DOMWidget):
         # we assume the entire simulation has the same time vector
         self.dt = 1 # time step for simulation, default to 1
         self.Nt = None # number of time steps
-        self.time_vector = None # time vector in [sec] 
+        self.time_vector = None # time vector in [sec]
 
         self.height = height
 
@@ -98,7 +96,7 @@ class NeuGraph(widgets.DOMWidget):
             TODO
         **kwargs:
             TODO
-        
+
         Returns
         -------
         NeuGraph
@@ -130,24 +128,24 @@ class NeuGraph(widgets.DOMWidget):
         """Generic callback firing
         Note
         ----
-        Currently it only supports a single callback at 
-        a time. This can be changed by appending to the 
+        Currently it only supports a single callback at
+        a time. This can be changed by appending to the
         `callback_dict` and handling it appropriated on
         the JS side
 
         Parameters
         ----------
         callback: str
-            The callback to be fired. Needs to be one of the 
-            strings inside the JS side's SigmaGraph's 
+            The callback to be fired. Needs to be one of the
+            strings inside the JS side's SigmaGraph's
             `callback_registry`
         options: list
-            a list of options to be passed into the callback 
+            a list of options to be passed into the callback
             TODO: rewrite callback to take dictionary as input
             to avoid having to remember the command sequence
         """
         self.callback_dict = {}
-        self.callback_dict[callback]= options
+        self.callback_dict[callback] = options
         self.callback_fired = True
 
     def layout(self, method="grid", prop="class"):
@@ -158,13 +156,13 @@ class NeuGraph(widgets.DOMWidget):
                 'gridLayout': [prop]
             }
         elif method == 'force':
-            self.callback = {
+            self.callback_dict = {
                 'toggleForceLayout': []
             }
         self.callback_fired = True
-        
+
     # def filter(self, prop, func):
-    #     """ Filter graph 
+    #     """ Filter graph
     #     Returns reduced graph based on applying compare_func to property of each node
 
     #     Parameter
@@ -188,7 +186,7 @@ class NeuGraph(widgets.DOMWidget):
         IO: str, optional
             whether the file is input or output
         mode: str, optional
-            read mode for the h5 files, defaults to 'r' which 
+            read mode for the h5 files, defaults to 'r' which
             only reads but does not allow writing to the file
         """
         if IO == 'output':
@@ -206,7 +204,7 @@ class NeuGraph(widgets.DOMWidget):
                     assert self.Nt == Nt, "Time step of {} is not consistent with previously set length".format(key)
                 self.time_vector = np.arange(0, Nt*self.dt, self.dt)
                 for _id in uids:
-                    if not _id in self._data_cache: 
+                    if not _id in self._data_cache:
                         self._data_cache[_id] = {}
                     if not 'output' in self._data_cache[_id]:
                         self._data_cache[_id]['output'] = {}
@@ -254,44 +252,44 @@ class NeuGraph(widgets.DOMWidget):
         """
         # Note: self.plotted_nodes_changed triggers this event, therefore
         # when we set this flag to True at the end of the call, this callback
-        # will be triggered again, to prevent that we safeguard against when the 
+        # will be triggered again, to prevent that we safeguard against when the
         # value is false
-        if self.plotted_nodes_changed == False: 
+        if not self.plotted_nodes_changed:
             return
         self.value = 'FIRED'
-        fig = plt.figure(figsize=(10,10), dpi=200)
-        ax_i = fig.add_subplot(2,1,1)
-        ax_i.set_title('Input',fontsize=20)
-        ax_o = fig.add_subplot(2,1,2)
-        ax_o.set_title('Output',fontsize=20)
-        ax_o.set_xlabel('Time',fontsize=20)
+        fig = plt.figure(figsize=(10, 10), dpi=200)
+        ax_i = fig.add_subplot(2, 1, 1)
+        ax_i.set_title('Input', fontsize=20)
+        ax_o = fig.add_subplot(2, 1, 2)
+        ax_o.set_title('Output', fontsize=20)
+        ax_o.set_xlabel('Time', fontsize=20)
 
-        for id in self.plotted_nodes:
+        for _id in self.plotted_nodes:
             # input
             try:
-                input_dict = self._data_cache[id]['input']
+                input_dict = self._data_cache[_id]['input']
                 for var in input_dict:
                     if input_dict[var] is None:
-                        idx = list(self.file_i[var+'/uids'][()].astype(str)).index(id)
-                        self._data_cache[id]['input'][var] = self.file_i[var+'/data'][:,idx]
+                        idx = list(self.file_i[var+'/uids'][()].astype(str)).index(_id)
+                        self._data_cache[_id]['input'][var] = self.file_i[var+'/data'][:, idx]
                     ax_i.plot(self.time_vector,
-                              self._data_cache[id]['input'][var],
-                              label="{}: {}".format(var, id))
+                              self._data_cache[_id]['input'][var],
+                              label="{}: {}".format(var, _id))
             except:
                 # if id has not input value, we simply continue in this case
                 # TODO: have more detailed exception handling
                 continue
-        for id in self.plotted_nodes:
+        for _id in self.plotted_nodes:
             # output
             try:
-                output_dict = self._data_cache[id]['output']
+                output_dict = self._data_cache[_id]['output']
                 for var in output_dict:
                     if output_dict[var] is None:
-                        idx = list(self.file_o[var+'/uids'][()].astype(str)).index(id)
-                        self._data_cache[id]['output'][var] = self.file_o[var+'/data'][:,idx]
+                        idx = list(self.file_o[var+'/uids'][()].astype(str)).index(_id)
+                        self._data_cache[_id]['output'][var] = self.file_o[var+'/data'][:, idx]
                     ax_o.plot(self.time_vector,
-                              self._data_cache[id]['output'][var],
-                              label="{}: {}".format(var, id))
+                              self._data_cache[_id]['output'][var],
+                              label="{}: {}".format(var, _id))
             except:
                 # if id has not input value, we simply continue in this case
                 # TODO: have more detailed exception handling
@@ -330,7 +328,7 @@ class NeuGraph(widgets.DOMWidget):
         -----------
         fig: matplotlib.figure
             input figure object
-        
+
         Returns
         --------
         io.ByesIO
