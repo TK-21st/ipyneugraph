@@ -1,22 +1,31 @@
-var widgets = require('@jupyter-widgets/base');
+/**
+ * NeuGraph JS Side
+ * 
+ * @remarks
+ * In handling callbacks, to ensure that the boolean flags indicating
+ * callback status is only set sequentially after callback is completed, 
+ * we rely on `Promise.resolve`. See `this.callbackFired` for an example.
+ * 
+ * Custom Model. Custom widgets models must at least provide default values
+ * for model attributes, including
+ *   - `_view_name`
+ *   - `_view_module`
+ *   - `_view_module_version`
+ * 
+ *   - `_model_name`
+ *   - `_model_module`
+ *   - `_model_module_version`
+ *  when different from the base class.
+ *  
+ *  When serialiazing the entire widget state for embedding, only values that
+ *  differ from the defaults will be specified.
+ */
 
+var widgets = require('@jupyter-widgets/base');
 var _ = require('lodash');
 var SigmaGraph = require('./graph').SigmaGraph;
 
-// Custom Model. Custom widgets models must at least provide default values
-// for model attributes, including
-//
-//  - `_view_name`
-//  - `_view_module`
-//  - `_view_module_version`
-//
-//  - `_model_name`
-//  - `_model_module`
-//  - `_model_module_version`
-//
-//  when different from the base class.
-// When serialiazing the entire widget state for embedding, only values that
-// differ from the defaults will be specified.
+
 var NeuGraphModel = widgets.DOMWidgetModel.extend({
     defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
         _model_name : 'NeuGraphModel',
@@ -137,9 +146,6 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
 
     renderSigma: function() {
         this.graph.initRenderer();
-        if (this.model.get('start_layout')){
-            this.graph.layoutButton.click();
-        }
     },
 
     callbackFired: function() {
@@ -167,7 +173,6 @@ var NeuGraphView = widgets.DOMWidgetView.extend({
         });
     },
 });
-
 
 
 module.exports = {
