@@ -31,6 +31,9 @@
   },
   "dependencies": {
     "@jupyter-widgets/base": "^1.0.0",
+    "@phosphor/commands": "^1.6.1",
+    "@phosphor/messaging": "^1.2.2",
+    "@phosphor/widgets": "^1.6.0",
     "callback-registry": "^2.4.0",
     "chroma-js": "^2.0.3",
     "d3-format": "^1.3.2",

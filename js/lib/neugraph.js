@@ -24,7 +24,17 @@
 var widgets = require('@jupyter-widgets/base');
 var _ = require('lodash');
 var SigmaGraph = require('./graph').SigmaGraph;
+import {
+    CommandRegistry
+} from '@phosphor/commands';
 
+import {
+    Message
+} from '@phosphor/messaging';
+
+import {
+    BoxPanel, CommandPalette, ContextMenu, DockPanel, Menu, MenuBar, Widget
+} from '@phosphor/widgets';
 
 var NeuGraphModel = widgets.DOMWidgetModel.extend({
     defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
