@@ -144,8 +144,10 @@ class NeuGraph(widgets.DOMWidget):
             TODO: rewrite callback to take dictionary as input
             to avoid having to remember the command sequence
         """
-        self.callback_dict = {}
-        self.callback_dict[callback] = options
+        self.callback_dict = {
+            callback: options
+        }
+        # self.callback_dict[callback] = options
         self.callback_fired = True
 
     def layout(self, method="grid", prop="class"):
